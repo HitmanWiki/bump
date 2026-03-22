@@ -27,6 +27,13 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 import psutil
 
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except ImportError:
+    PSUTIL_AVAILABLE = False
+    psutil = None
+    logging.warning("psutil not installed. System stats will be limited.")
 # ==================== RAILWAY CONFIGURATION ====================
 # Get PORT from environment (Railway sets this automatically)
 PORT = int(os.environ.get("PORT", 8000))
@@ -1277,63 +1284,93 @@ async def toggle_user_status(username: str, user_info: Dict = Depends(require_ad
 
 @app.get("/api/admin/system-stats")
 async def get_system_stats(user_info: Dict = Depends(require_admin)):
+    """Get comprehensive bot statistics"""
     try:
+        # Calculate bot-specific statistics
         total_operations = len(active_operations)
         
+        # Count operations by status
         running_ops = sum(1 for op in active_operations.values() if op.get("status") == "running")
         completed_ops = sum(1 for op in active_operations.values() if op.get("status") == "completed")
         stopped_ops = sum(1 for op in active_operations.values() if op.get("status") == "stopped")
         failed_ops = sum(1 for op in active_operations.values() if op.get("status") == "failed")
         
+        # Calculate performance metrics
         total_successful_buys = sum(op.get("progress", {}).get("successful_buys", 0) for op in active_operations.values())
         total_attempted_buys = sum(op.get("progress", {}).get("total_buys", 0) for op in active_operations.values())
         success_rate = (total_successful_buys / total_attempted_buys * 100) if total_attempted_buys > 0 else 0
         
+        # User activity
         active_sessions = len(user_manager.sessions)
         total_users = len(user_manager.users)
         
+        # Calculate active users in last hour
         active_users_last_hour = 0
         current_time = datetime.now().timestamp()
         for session in user_manager.sessions.values():
             last_activity = datetime.fromisoformat(session["last_activity"]).timestamp()
-            if current_time - last_activity < 3600:
+            if current_time - last_activity < 3600:  # 1 hour
                 active_users_last_hour += 1
         
+        # Bot performance metrics
         total_cycles_completed = sum(op.get("progress", {}).get("cycles_completed", 0) for op in active_operations.values())
         total_cycles_planned = sum(op.get("config", {}).num_cycles for op in active_operations.values() if hasattr(op.get("config"), 'num_cycles'))
         completion_rate = (total_cycles_completed / total_cycles_planned * 100) if total_cycles_planned > 0 else 0
         
+        # Network statistics
         unique_tokens = len(set(op.get("config", {}).token_address for op in active_operations.values() if hasattr(op.get("config"), 'token_address')))
         
+        # Get unique RPC nodes from user settings
         unique_nodes = set()
         for username, user_data in user_manager.users.items():
             node = user_data.get("settings", {}).get("node")
             if node:
                 unique_nodes.add(node)
         
+        # System stats (only if psutil is available)
+        system_memory = {}
+        system_cpu = {}
+        if PSUTIL_AVAILABLE:
+            system_memory = psutil.virtual_memory()
+            system_cpu = psutil.cpu_percent(interval=1)
+        
         stats = {
             "success": True,
             "stats": {
+                # User Statistics
                 "total_users": total_users,
                 "active_sessions": active_sessions,
                 "active_users_last_hour": active_users_last_hour,
+                
+                # Operation Statistics
                 "total_operations": total_operations,
                 "running_operations": running_ops,
                 "completed_operations": completed_ops,
                 "stopped_operations": stopped_ops,
                 "failed_operations": failed_ops,
+                
+                # Performance Metrics
                 "total_successful_buys": total_successful_buys,
                 "total_attempted_buys": total_attempted_buys,
                 "success_rate": round(success_rate, 2),
                 "completion_rate": round(completion_rate, 2),
+                
+                # Bot Activity
                 "total_cycles_completed": total_cycles_completed,
                 "total_cycles_planned": total_cycles_planned,
                 "unique_tokens_traded": unique_tokens,
                 "unique_rpc_nodes": len(unique_nodes),
+                
+                # System Health
                 "websocket_connections": sum(len(consumers) for consumers in log_consumers.values()),
                 "active_operation_threads": running_ops
             }
         }
+        
+        # Add system stats if available
+        if PSUTIL_AVAILABLE:
+            stats["stats"]["memory_usage"] = system_memory.percent if system_memory else 0
+            stats["stats"]["cpu_usage"] = system_cpu if system_cpu else 0
         
         return stats
         
