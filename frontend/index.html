@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro Buy Bot | Trading Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <style id="main-css">
+        :root {
+            /* Updated, sophisticated Dark Theme Palette */
+            --primary-color: #00A389;
+            /* Vibrant Teal/Cyan for highlights (formerly primary) */
+            --secondary-color: #2D3748;
+            /* Dark Slate Blue for background elements (formerly secondary) */
+            --background-gradient: linear-gradient(135deg, #1A202C 0%, #171923 100%);
+            /* Deep dark background */
+            --card-bg: #2D3748;
+            /* Card background color */
+            --text-color-dark: #EDF2F7;
+            /* Light text on dark background */
+            --text-color-light: #A0AEC0;
+            /* Subdued text/labels */
+            --log-bg: #111111;
+            --log-text: #00FF00;
+            /* Neon green for logs */
+            --shadow-light: 0 4px 15px rgba(0, 0, 0, 0.4);
+            --shadow-heavy: 0 10px 30px rgba(0, 0, 0, 0.6);
+            --danger-color: #F56565;
+            --success-color: #48BB78;
+            --warning-color: #ECC94B;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--background-gradient);
+            min-height: 100vh;
+            color: var(--text-color-dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            /* Slightly wider */
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .container-small {
+            padding: 40px 20px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* --- LOGIN SCREEN --- */
+        .login-container {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: var(--shadow-heavy);
+            max-width: 450px;
+            margin: 100px auto;
+            border: 1px solid #4A5568;
+        }
+
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: var(--primary-color);
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-color-light);
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 14px 15px;
+            background: #4A5568;
+            /* Dark input field */
+            color: var(--text-color-dark);
+            border: 1px solid #4A5568;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 163, 137, 0.3);
+        }
+
+        /* --- BUTTONS --- */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 11px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--secondary-color);
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(0, 163, 137, 0.4);
+        }
+
+        .btn-secondary {
+            background: #4A5568;
+            color: var(--text-color-dark);
+        }
+
+        .btn-secondary:hover {
+            background: #2D3748;
+            transform: translateY(-1px);
+        }
+
+        .btn-warning {
+            background: var(--warning-color);
+            color: var(--secondary-color);
+        }
+
+        .btn-warning:hover {
+            background: #D6BC2B;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #E53E3E;
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #38A169;
+        }
+
+        .error-message {
+            color: var(--danger-color);
+            background: rgba(245, 101, 101, 0.1);
+            border: 1px solid var(--danger-color);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-weight: 500;
+        }
+
+        /* --- APP SCREEN --- */
+        .app-header {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 20px 30px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid var(--primary-color);
+        }
+
+        .logo-title {
+            font-weight: 800;
+            color: var(--primary-color);
+            font-size: 28px;
+            letter-spacing: 1px;
+        }
+
+        .user-controls {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            font-weight: 600;
+        }
+
+        .user-role {
+            padding: 5px 15px;
+            border-radius: 25px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .role-admin {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .role-user {
+            background: var(--success-color);
+            color: white;
+        }
+
+        /* Admin Panel */
+        .admin-panel {
+            background: var(--secondary-color);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 20px;
+            border: 1px solid #4A5568;
+            box-shadow: var(--shadow-light);
+        }
+
+        .panel-title {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: var(--primary-color);
+            border-bottom: 1px solid #4A5568;
+            padding-bottom: 10px;
+        }
+
+        .admin-status {
+            color: var(--text-color-light);
+            margin-bottom: 15px;
+            font-size: 15px;
+        }
+
+        .highlight-text {
+            font-weight: 700;
+            color: var(--text-color-dark);
+        }
+
+        .control-buttons-group,
+        .quick-actions-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-areas:
+                "wallet network"
+                "operation active";
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .wallet-info {
+            grid-area: wallet;
+        }
+
+        .network-info {
+            grid-area: network;
+        }
+
+        .operation-card {
+            grid-area: operation;
+        }
+
+        .active-operations-card {
+            grid-area: active;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: var(--shadow-light);
+            transition: all 0.3s;
+            border: 1px solid #4A5568;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-heavy);
+            transform: translateY(-2px);
+        }
+
+        .card h3 {
+            margin-bottom: 25px;
+            color: var(--primary-color);
+            border-bottom: 2px solid #4A5568;
+            padding-bottom: 15px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .placeholder-text {
+            color: var(--text-color-light);
+            font-style: italic;
+            padding: 10px 0;
+            font-size: 14px;
+        }
+
+        /* Wallet Info Specific */
+        .wallet-info {
+            /* Use a distinct, complementary gradient for the most important card */
+            background: linear-gradient(135deg, #4299E1 0%, #3182CE 100%);
+            color: white;
+            border: none;
+        }
+
+        .wallet-info h3 {
+            color: white;
+            border-bottom-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .wallet-address {
+            font-family: monospace;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            word-break: break-all;
+            font-size: 14px;
+        }
+
+        .wallet-balance {
+            font-size: 36px;
+            font-weight: 800;
+            margin-bottom: 15px;
+            display: block;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Network Info Specific */
+        .network-info {
+            background: #1A202C;
+            /* Darker than other cards */
+            color: #EDF2F7;
+            border: 1px solid #4A5568;
+        }
+
+        .network-info h3 {
+            color: var(--primary-color);
+            border-bottom-color: #4A5568;
+        }
+
+        .gas-price {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            color: var(--success-color);
+        }
+
+        .gas-source {
+            font-size: 13px;
+            opacity: 0.8;
+            margin-bottom: 15px;
+            color: var(--text-color-light);
+        }
+
+        .cost-breakdown {
+            background: #2D3748;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #4A5568;
+        }
+
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(74, 85, 104, 0.5);
+            font-size: 14px;
+            color: var(--text-color-light);
+        }
+
+        .cost-total {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0 0;
+            font-weight: 700;
+            font-size: 17px;
+            border-top: 2px solid #4A5568;
+            margin-top: 8px;
+            color: var(--text-color-dark);
+        }
+
+        .update-time {
+            margin-top: 12px;
+            font-size: 12px;
+            opacity: 0.7;
+            border-top: 1px solid #4A5568;
+            padding-top: 8px;
+            color: var(--text-color-light);
+        }
+
+        /* Operation Section */
+        .action-buttons-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .action-buttons-group .btn {
+            flex: 1;
+        }
+
+        .operation-item {
+            background: #4A5568;
+            border-radius: 10px;
+            padding: 15px;
+            border-left: 5px solid var(--primary-color);
+            margin-bottom: 15px;
+            transition: box-shadow 0.2s, transform 0.2s;
+        }
+
+        .operation-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .operation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .operation-title {
+            font-weight: 700;
+            font-size: 17px;
+            color: var(--text-color-dark);
+        }
+
+        .operation-status {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .status-running {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .status-stopped {
+            background: var(--text-color-light);
+            color: var(--card-bg);
+        }
+
+        .status-failed {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .progress-bar {
+            background: #4A5568;
+            border-radius: 10px;
+            height: 8px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            background: var(--primary-color);
+            height: 100%;
+            transition: width 0.3s;
+        }
+
+        /* Logs Section */
+        .logs-section h3 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logs-container {
+            background: var(--log-bg);
+            color: var(--log-text);
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            border-radius: 10px;
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #333;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            line-height: 1.5;
+            font-size: 13px;
+            white-space: pre-wrap;
+        }
+
+        .log-timestamp {
+            color: #4A5568;
+            margin-right: 10px;
+        }
+
+        /* --- MODALS --- */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--card-bg);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 550px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-heavy);
+            animation: slideIn 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            border: 1px solid #4A5568;
+        }
+
+        .modal-content-large {
+            max-width: 800px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #4A5568;
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 30px;
+            cursor: pointer;
+            color: var(--text-color-light);
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: var(--danger-color);
+            transform: rotate(90deg);
+            transition: transform 0.3s;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-with-button input {
+            flex: 1;
+        }
+
+        /* User Management */
+        .users-list-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #4A5568;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .user-details {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .user-username {
+            font-weight: 700;
+            margin-right: 15px;
+            font-size: 16px;
+            color: var(--text-color-dark);
+        }
+
+        .user-role-badge {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Node Status */
+        .node-status {
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid transparent;
+        }
+
+        .node-status.online {
+            background: rgba(72, 187, 120, 0.2);
+            color: var(--success-color);
+            border: 1px solid var(--success-color);
+            border-left: 5px solid var(--success-color);
+        }
+
+        .node-status.offline {
+            background: rgba(245, 101, 101, 0.2);
+            color: var(--danger-color);
+            border: 1px solid var(--danger-color);
+            border-left: 5px solid var(--danger-color);
+        }
+
+        .node-status.error {
+            background: rgba(236, 201, 75, 0.2);
+            color: var(--warning-color);
+            border: 1px solid var(--warning-color);
+            border-left: 5px solid var(--warning-color);
+        }
+
+        /* --- RESPONSIVENESS (Refined) --- */
+        @media (max-width: 1024px) {
+            .app-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .user-controls {
+                margin-top: 15px;
+                width: 100%;
+                justify-content: space-between;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .login-container {
+                margin: 50px 20px;
+                padding: 30px;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "wallet"
+                    "network"
+                    "operation"
+                    "active";
+            }
+
+            .action-buttons-group {
+                flex-direction: column;
+            }
+
+            .action-buttons-group .btn {
+                width: 100%;
+            }
+
+            .control-buttons-group,
+            .quick-actions-group {
+                gap: 10px;
+                flex-direction: column;
+            }
+
+            .control-buttons-group .btn,
+            .quick-actions-group .btn {
+                width: 100%;
+            }
+
+            .user-item {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 15px;
+            }
+
+            .user-details {
+                margin-bottom: 10px;
+            }
+
+            .user-actions {
+                width: 100%;
+                justify-content: space-around;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loginScreen" class="screen active">
+        <div class="container container-small">
+            <div class="login-container">
+                <h1 class="login-title"><i class="fas fa-robot"></i> Micro Buy Bot</h1>
+                <div id="loginError" class="error-message"></div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" required>
+                    </div>
+                    <button type="submit" id="loginBtn" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i>
+                        Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="appScreen" class="screen">
+        <div class="container">
+            <header class="app-header">
+                <h1 class="logo-title">Micro Buy Bot</h1>
+                <div class="user-controls">
+                    <span id="usernameDisplay"></span>
+                    <span id="userRole" class="user-role"></span>
+                    <button id="logoutBtn" class="btn btn-secondary btn-icon"><i class="fas fa-sign-out-alt"></i>
+                        Logout</button>
+                </div>
+            </header>
+
+            <section id="adminPanel" class="admin-panel" style="display: none;">
+                <h3 class="panel-title"><i class="fas fa-crown"></i> Admin Controls</h3>
+                <div class="admin-status">
+                    <i class="fas fa-check-circle" style="color: var(--success-color);"></i> Logged in as: <span
+                        id="adminUsername" class="highlight-text"></span> (ADMIN)
+                </div>
+                <div class="control-buttons-group">
+                    <button onclick="app.openManageUsersModal()" class="btn btn-primary"><i class="fas fa-users"></i>
+                        Manage Users</button>
+                    <button onclick="app.openCreateUserModal()" class="btn btn-success"><i class="fas fa-user-plus"></i>
+                        Create User</button>
+                    <button onclick="app.openChangePasswordModal()" class="btn btn-warning"><i class="fas fa-lock"></i>
+                        Change Password</button>
+                    <button onclick="app.testAdminAccess()" class="btn btn-secondary"><i class="fas fa-search"></i> Test
+                        Access</button>
+                </div>
+                <div id="adminStatsSection" class="admin-stats-section">
+                    <h4><i class="fas fa-chart-bar"></i> Loading Statistics...</h4>
+                </div>
+            </section>
+
+            <main class="dashboard-grid">
+                <div class="card wallet-info">
+                    <h3><i class="fas fa-wallet"></i> Wallet Information</h3>
+                    <div id="walletInfo">
+                        <p class="placeholder-text">Please configure your wallet in Settings</p>
+                    </div>
+                </div>
+
+                <div class="card network-info">
+                    <h3><i class="fas fa-gas-pump"></i> Network Status</h3>
+                    <div id="networkInfo">
+                        <p class="placeholder-text">Loading gas prices...</p>
+                    </div>
+                </div>
+
+                <div class="card operation-card">
+                    <h3><i class="fas fa-rocket"></i> Start New Operation</h3>
+                    <form id="operationForm">
+                        <div class="form-group">
+                            <label for="tokenAddress">Token Address (CA)</label>
+                            <input type="text" id="tokenAddress" placeholder="0x..." required>
+                        </div>
+                        <div class="form-group">
+                            <label for="speed">Operation Speed</label>
+                            <select id="speed" required>
+                                <option value="slow">Slow (3 wallets/cycle)</option>
+                                <option value="medium" selected>Medium (10 wallets/cycle)</option>
+                                <option value="fast">Fast (25 wallets/cycle)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="numCycles">Number of Cycles</label>
+                            <input type="number" id="numCycles" value="10" min="1" max="1000" required>
+                        </div>
+                        <div class="action-buttons-group">
+                            <button type="button" id="estimateCostBtn" class="btn btn-warning"><i
+                                    class="fas fa-calculator"></i> Estimate Cost</button>
+                            <button type="submit" id="startOperationBtn" class="btn btn-success"><i
+                                    class="fas fa-play"></i> Start Operation</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card active-operations-card">
+                    <h3><i class="fas fa-sync-alt"></i> Active Operations</h3>
+                    <div id="activeOperations">
+                        <div class="placeholder-text">No active operations currently running.</div>
+                    </div>
+                </div>
+            </main>
+
+            <section class="card logs-section">
+                <h3><i class="fas fa-terminal"></i> Live Logs
+                    <button id="clearLogsBtn" class="btn btn-secondary btn-small">
+                        <i class="fas fa-eraser"></i> Clear Logs
+                    </button>
+                </h3>
+                <div class="logs-container">
+                    <div id="logOutput"></div>
+                </div>
+            </section>
+
+            <section class="card quick-actions-section">
+                <h3><i class="fas fa-bolt"></i> Quick Actions</h3>
+                <div class="quick-actions-group">
+                    <button id="settingsBtn" class="btn btn-primary"><i class="fas fa-cog"></i> Settings</button>
+                    <button id="downloadLogsBtn" class="btn btn-secondary"><i class="fas fa-download"></i> Download
+                        Logs</button>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-cog"></i> Settings</h2>
+                <button id="closeSettingsBtn" class="close-btn">&times;</button>
+            </div>
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label for="settingsPk">Private Key</label>
+                    <input type="password" id="settingsPk" placeholder="Enter your private key">
+                </div>
+                <div class="form-group">
+                    <label for="settingsNode">RPC Node URL</label>
+                    <div class="input-with-button">
+                        <input type="text" id="settingsNode" placeholder="https://...">
+                        <button type="button" id="validateNodeBtn" class="btn btn-warning"><i class="fas fa-link"></i>
+                            Validate</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="settingsTokenCA">Default Token Address</label>
+                    <input type="text" id="settingsTokenCA" placeholder="0x...">
+                </div>
+                <div class="form-group">
+                    <label for="settingsBuyAmount">Buy Amount (Wei)</label>
+                    <input type="number" id="settingsBuyAmount" value="10" min="1">
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancelSettingsBtn" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Settings</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="costModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-money-bill-wave"></i> Cost Estimation</h2>
+                <button id="closeCostBtn" class="close-btn">&times;</button>
+            </div>
+            <div id="costEstimationContent"></div>
+        </div>
+    </div>
+
+    <div id="manageUsersModal" class="modal">
+        <div class="modal-content modal-content-large">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-users-cog"></i> Manage Users</h2>
+                <button id="closeManageUsersBtn" class="close-btn">&times;</button>
+            </div>
+            <div id="usersList" class="users-list-container">
+                <p>Loading users...</p>
+            </div>
+            <div class="form-actions">
+                <button id="closeManageUsersBtn2" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="createUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-user-plus"></i> Create User</h2>
+                <button id="closeCreateUserBtn" class="close-btn">&times;</button>
+            </div>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" required minlength="3">
+                </div>
+                <div class="form-group">
+                    <label for="newUserPassword">Password</label>
+                    <input type="password" id="newUserPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="newUserRole">Role</label>
+                    <select id="newUserRole" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="closeCreateUserBtn2" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-user-plus"></i> Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="changePasswordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title"><i class="fas fa-shield-alt"></i> Change Password</h2>
+                <button id="closeChangePasswordBtn" class="close-btn">&times;</button>
+            </div>
+            <form id="changePasswordForm">
+                <div class="form-group">
+                    <label for="oldPassword">Old Password</label>
+                    <input type="password" id="oldPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" required minlength="6">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" required minlength="6">
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="closeChangePasswordBtn2" class="btn btn-secondary">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-lock"></i> Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+<script src="app.js"></script>
+</body>
+
+</html>
