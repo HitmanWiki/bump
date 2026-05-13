@@ -1,5 +1,3 @@
-# Create fly.toml
-@"
 app = "bump-r24jpq"
 
 [build]
@@ -19,4 +17,3 @@ app = "bump-r24jpq"
   [[services.ports]]
     port = 443
     handlers = ["tls", "http"]
-"@ | Out-File -FilePath fly.toml -Encoding UTF8
