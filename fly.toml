@@ -1,7 +1,8 @@
 app = "bump-4m9wjq"
 
 [build]
-  builder = "paketobuildpacks/builder:base"
+  # Force Dockerfile build instead of buildpacks
+  dockerfile = "Dockerfile"
 
 [env]
   PORT = "8080"
