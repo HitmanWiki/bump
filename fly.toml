@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for bump-4m9wjq on 2026-05-13T11:02:14Z
+# fly.toml app configuration file generated for bump-r24jpq on 2026-05-13T12:03:32Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'bump-4m9wjq'
-primary_region = 'bom'
+app = 'bump-r24jpq'
+primary_region = 'ams'
 
 [build]
 
