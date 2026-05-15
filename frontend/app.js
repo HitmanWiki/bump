@@ -1,4 +1,4 @@
-// app.js - Complete Fixed Version with Proper Session Handling
+// app.js - Complete Fixed Version with Working Admin Panel
 class ParallelMicroBuyBotApp {
     constructor() {
         this.sessionId = null;
@@ -7,9 +7,6 @@ class ParallelMicroBuyBotApp {
         this.ws = null;
         this.operations = new Map();
         this.userPassword = null;
-        this.pollingInterval = null;
-        this.isSessionValid = true;
-        this.failedRequests = 0;
 
         this.initializeEventListeners();
         this.checkExistingSession();
@@ -107,56 +104,28 @@ class ParallelMicroBuyBotApp {
         const savedSessionId = localStorage.getItem('sessionId');
         const savedUsername = localStorage.getItem('username');
         const savedUserRole = localStorage.getItem('userRole');
-        const savedPassword = localStorage.getItem('userPassword');
 
         if (savedSessionId && savedUsername && savedUserRole) {
             this.sessionId = savedSessionId;
             this.username = savedUsername;
             this.userRole = savedUserRole;
-            this.userPassword = savedPassword;
             
             try {
-                // Test the session with a lightweight API call
-                const response = await fetch('/api/operations', {
-                    headers: { 'X-Session-ID': this.sessionId }
-                });
-                
-                if (response.status === 401) {
-                    throw new Error('Session expired');
-                }
-                
-                if (response.ok) {
-                    this.showAppScreen();
-                    return;
-                }
+                await this.apiCall('/api/wallet-info', 'GET');
+                this.showAppScreen();
+                return;
             } catch (error) {
                 console.log('Session expired:', error);
-                this.clearSession();
+                localStorage.removeItem('sessionId');
+                localStorage.removeItem('username');
+                localStorage.removeItem('userRole');
+                this.sessionId = null;
+                this.username = null;
+                this.userRole = null;
             }
         }
         
         this.showLoginScreen();
-    }
-
-    clearSession() {
-        localStorage.removeItem('sessionId');
-        localStorage.removeItem('username');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userPassword');
-        this.sessionId = null;
-        this.username = null;
-        this.userRole = null;
-        this.userPassword = null;
-        
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
-        }
-        
-        if (this.ws) {
-            this.ws.close();
-            this.ws = null;
-        }
     }
 
     showLoginScreen() {
@@ -276,7 +245,6 @@ class ParallelMicroBuyBotApp {
                 localStorage.setItem('sessionId', this.sessionId);
                 localStorage.setItem('username', this.username);
                 localStorage.setItem('userRole', this.userRole);
-                localStorage.setItem('userPassword', this.userPassword);
 
                 console.log('Login successful, showing app screen');
                 this.showAppScreen();
@@ -304,17 +272,23 @@ class ParallelMicroBuyBotApp {
             console.log('Logout error:', error);
         }
 
-        this.clearSession();
+        localStorage.removeItem('sessionId');
+        localStorage.removeItem('username');
+        localStorage.removeItem('userRole');
+        this.sessionId = null;
+        this.username = null;
+        this.userRole = null;
+        this.userPassword = null;
+
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+
         this.showLoginScreen();
     }
 
     async loadWalletInfo() {
-        // Don't attempt if session is invalid
-        if (!this.isSessionValid) {
-            console.log('Session invalid, skipping wallet info load');
-            return;
-        }
-        
         try {
             const response = await this.apiCall('/api/wallet-info', 'GET', null, this.userPassword);
 
@@ -331,7 +305,6 @@ class ParallelMicroBuyBotApp {
                         </div>
                     `;
                 }
-                this.failedRequests = 0;
             } else if (response.wallet_configured === false) {
                 const walletInfo = document.getElementById('walletInfo');
                 if (walletInfo) walletInfo.innerHTML = '<p>Please configure your wallet in Settings</p>';
@@ -339,7 +312,6 @@ class ParallelMicroBuyBotApp {
                 const password = await this.promptForPassword();
                 if (password) {
                     this.userPassword = password;
-                    localStorage.setItem('userPassword', this.userPassword);
                     this.loadWalletInfo();
                 }
             } else {
@@ -348,33 +320,21 @@ class ParallelMicroBuyBotApp {
             }
         } catch (error) {
             console.error('Failed to load wallet info:', error);
-            if (error.message === 'Session expired') {
-                this.handleSessionExpired();
-            } else {
-                const walletInfo = document.getElementById('walletInfo');
-                if (walletInfo) walletInfo.innerHTML = '<p>Error loading wallet info</p>';
-            }
+            const walletInfo = document.getElementById('walletInfo');
+            if (walletInfo) walletInfo.innerHTML = '<p>Error loading wallet info</p>';
         }
     }
 
     async loadNetworkInfo() {
-        // Don't attempt if session is invalid
-        if (!this.isSessionValid) {
-            console.log('Session invalid, skipping network info load');
-            return;
-        }
-        
         try {
             const response = await this.apiCall('/api/gas-info', 'GET', null, this.userPassword);
 
             if (response.success) {
                 this.displayNetworkInfo(response);
-                this.failedRequests = 0;
             } else if (response.error === 'Password required') {
                 const password = await this.promptForPassword();
                 if (password) {
                     this.userPassword = password;
-                    localStorage.setItem('userPassword', this.userPassword);
                     this.loadNetworkInfo();
                 }
             } else {
@@ -383,31 +343,9 @@ class ParallelMicroBuyBotApp {
             }
         } catch (error) {
             console.error('Failed to load network info:', error);
-            if (error.message === 'Session expired') {
-                this.handleSessionExpired();
-            } else {
-                const networkInfo = document.getElementById('networkInfo');
-                if (networkInfo) networkInfo.innerHTML = '<p>Error loading network information</p>';
-            }
+            const networkInfo = document.getElementById('networkInfo');
+            if (networkInfo) networkInfo.innerHTML = '<p>Error loading network information</p>';
         }
-    }
-
-    handleSessionExpired() {
-        console.log('Session expired, clearing and redirecting');
-        this.isSessionValid = false;
-        this.clearSession();
-        
-        // Show a message to the user
-        alert('Your session has expired. Please log in again.');
-        
-        // Stop all polling
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-            this.pollingInterval = null;
-        }
-        
-        // Redirect to login
-        this.showLoginScreen();
     }
 
     displayNetworkInfo(data) {
@@ -502,7 +440,6 @@ class ParallelMicroBuyBotApp {
                 return;
             }
             this.userPassword = settings.password;
-            localStorage.setItem('userPassword', this.userPassword);
         }
 
         try {
@@ -635,7 +572,6 @@ class ParallelMicroBuyBotApp {
                 return;
             }
             this.userPassword = password;
-            localStorage.setItem('userPassword', this.userPassword);
         }
 
         try {
@@ -739,7 +675,6 @@ class ParallelMicroBuyBotApp {
                 return;
             }
             this.userPassword = password;
-            localStorage.setItem('userPassword', this.userPassword);
         }
 
         const startBtn = document.getElementById('startOperationBtn');
@@ -772,23 +707,14 @@ class ParallelMicroBuyBotApp {
     }
 
     async loadOperations() {
-        // Don't attempt if session is invalid
-        if (!this.isSessionValid) {
-            return;
-        }
-        
         try {
             const response = await this.apiCall('/api/operations', 'GET');
 
             if (response.success) {
                 this.displayOperations(response.operations);
-                this.failedRequests = 0;
             }
         } catch (error) {
             console.error('Failed to load operations:', error);
-            if (error.message === 'Session expired') {
-                this.handleSessionExpired();
-            }
         }
     }
 
@@ -912,10 +838,8 @@ class ParallelMicroBuyBotApp {
 
         this.ws.onclose = () => {
             console.log('WebSocket disconnected');
-            if (this.isSessionValid) {
-                this.addLog('WebSocket disconnected - Reconnecting...');
-                setTimeout(() => this.connectWebSocket(), 5000);
-            }
+            this.addLog('WebSocket disconnected - Reconnecting...');
+            setTimeout(() => this.connectWebSocket(), 5000);
         };
 
         this.ws.onerror = (error) => {
@@ -946,19 +870,11 @@ class ParallelMicroBuyBotApp {
     }
 
     startOperationPolling() {
-        // Clear existing interval if any
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-        }
-        
-        this.pollingInterval = setInterval(() => {
-            if (this.isSessionValid) {
-                this.loadOperations();
-                // Refresh wallet and network info every 5 minutes
-                if (Date.now() % 300000 < 5000) {
-                    this.loadWalletInfo();
-                    this.loadNetworkInfo();
-                }
+        setInterval(() => {
+            this.loadOperations();
+            if (Date.now() % 300000 < 5000) {
+                this.loadWalletInfo();
+                this.loadNetworkInfo();
             }
         }, 5000);
     }
@@ -976,31 +892,19 @@ class ParallelMicroBuyBotApp {
         }
     }
 
-    async loadAdminStats() {
-        if (this.userRole !== 'admin') return;
+   showAdminPanel() {
+    const adminPanel = document.getElementById('adminPanel');
+    if (!adminPanel) return;
+
+    if (this.userRole === 'admin') {
+        adminPanel.style.display = 'block';
         
-        try {
-            const [systemStats, allOperations] = await Promise.all([
-                this.apiCall('/api/admin/system-stats', 'GET'),
-                this.apiCall('/api/admin/all-operations', 'GET')
-            ]);
-            this.displayAdminStats(systemStats, allOperations);
-        } catch (error) {
-            console.error('Failed to load admin stats:', error);
-            const statsContainer = document.getElementById('adminStatsContainer') || document.getElementById('adminStats');
-            if (statsContainer) {
-                statsContainer.innerHTML = '<div style="color: #dc3545;">Error loading statistics</div>';
-            }
-        }
-    }
-
-    displayAdminStats(systemStats, allOperations) {
-        if (this.userRole !== 'admin') return;
-
+        // Set admin username display
+        const adminUsername = document.getElementById('adminUsername');
+        if (adminUsername) adminUsername.textContent = this.username;
+        
+        // Create stats container if it doesn't exist
         let statsContainer = document.getElementById('adminStatsContainer');
-        if (!statsContainer) {
-            statsContainer = document.getElementById('adminStats');
-        }
         if (!statsContainer) {
             const adminStatsSection = document.getElementById('adminStatsSection');
             if (adminStatsSection) {
@@ -1010,70 +914,99 @@ class ParallelMicroBuyBotApp {
             }
         }
         
-        if (!statsContainer) {
-            console.warn('Stats container not found');
-            return;
+        // Set initial loading message
+        if (statsContainer) {
+            statsContainer.innerHTML = '<h4>📊 Loading Statistics...</h4>';
         }
-
-        let statsHTML = '<h4>📊 Bot Statistics</h4>';
-
-        if (systemStats.success) {
-            const stats = systemStats.stats;
-            statsHTML += `
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
-                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #00A389;">👥 Users</h5>
-                        <div>Total: ${stats.total_users || 0}</div>
-                        <div>Active Sessions: ${stats.active_sessions || 0}</div>
-                        <div>Active (1h): ${stats.active_users_last_hour || 0}</div>
-                    </div>
-                    
-                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #00A389;">🔄 Operations</h5>
-                        <div>Total: ${stats.total_operations || 0}</div>
-                        <div>Running: ${stats.running_operations || 0}</div>
-                        <div>Completed: ${stats.completed_operations || 0}</div>
-                    </div>
-                    
-                    <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
-                        <h5 style="margin: 0 0 10px 0; color: #00A389;">📈 Performance</h5>
-                        <div>Success Rate: ${stats.success_rate || 0}%</div>
-                        <div>Completion: ${stats.completion_rate || 0}%</div>
-                        <div>Successful Buys: ${stats.total_successful_buys || 0}</div>
-                    </div>
-                </div>
-            `;
-        } else {
-            statsHTML += `
-                <div style="color: #dc3545; background: rgba(220,53,69,0.2); padding: 10px; border-radius: 5px;">
-                    <div>❌ Error loading statistics: ${systemStats.error || 'Unknown error'}</div>
-                    <button onclick="app.loadAdminStats()" style="margin-top: 10px; padding: 5px 10px; background: #ffc107; border: none; border-radius: 5px; cursor: pointer;">
-                        Retry
-                    </button>
-                </div>
-            `;
-        }
-
-        if (allOperations.success && allOperations.operations && Object.keys(allOperations.operations).length > 0) {
-            statsHTML += `
-                <div style="margin-top: 20px;">
-                    <h5>🚀 Currently Active Operations</h5>
-                    <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
-                        ${Object.entries(allOperations.operations).map(([id, op]) => `
-                            <div style="margin: 5px 0; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 3px; border-left: 3px solid #00A389; font-size: 12px;">
-                                <strong>${op.username || 'Unknown'}</strong> | 
-                                ${op.config?.token_address ? op.config.token_address.slice(0, 8) + '...' : 'No token'} | 
-                                <span class="status-${op.status || 'unknown'}">${(op.status || 'UNKNOWN').toUpperCase()}</span> |
-                                Progress: ${op.progress?.cycles_completed || 0}/${op.progress?.total_cycles || 0}
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        statsContainer.innerHTML = statsHTML;
+        
+        console.log('Admin panel initialized');
+    } else {
+        adminPanel.style.display = 'none';
     }
+}
+displayAdminStats(systemStats, allOperations) {
+    if (this.userRole !== 'admin') return;
+
+    // Try to find the stats container - it might be adminStats or adminStatsContainer
+    let statsContainer = document.getElementById('adminStatsContainer');
+    if (!statsContainer) {
+        statsContainer = document.getElementById('adminStats');
+    }
+    if (!statsContainer) {
+        // Create the stats container if it doesn't exist
+        const adminStatsSection = document.getElementById('adminStatsSection');
+        if (adminStatsSection) {
+            statsContainer = document.createElement('div');
+            statsContainer.id = 'adminStatsContainer';
+            adminStatsSection.appendChild(statsContainer);
+        }
+    }
+    
+    if (!statsContainer) {
+        console.warn('Stats container not found, stats will not be displayed');
+        return;
+    }
+
+    let statsHTML = '<h4>📊 Bot Statistics</h4>';
+
+    if (systemStats.success) {
+        const stats = systemStats.stats;
+        statsHTML += `
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                    <h5 style="margin: 0 0 10px 0; color: #00A389;">👥 Users</h5>
+                    <div>Total: ${stats.total_users || 0}</div>
+                    <div>Active Sessions: ${stats.active_sessions || 0}</div>
+                    <div>Active (1h): ${stats.active_users_last_hour || 0}</div>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                    <h5 style="margin: 0 0 10px 0; color: #00A389;">🔄 Operations</h5>
+                    <div>Total: ${stats.total_operations || 0}</div>
+                    <div>Running: ${stats.running_operations || 0}</div>
+                    <div>Completed: ${stats.completed_operations || 0}</div>
+                </div>
+                
+                <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px;">
+                    <h5 style="margin: 0 0 10px 0; color: #00A389;">📈 Performance</h5>
+                    <div>Success Rate: ${stats.success_rate || 0}%</div>
+                    <div>Completion: ${stats.completion_rate || 0}%</div>
+                    <div>Successful Buys: ${stats.total_successful_buys || 0}</div>
+                </div>
+            </div>
+        `;
+    } else {
+        statsHTML += `
+            <div style="color: #dc3545; background: rgba(220,53,69,0.2); padding: 10px; border-radius: 5px;">
+                <div>❌ Error loading statistics: ${systemStats.error || 'Unknown error'}</div>
+                <button onclick="app.loadAdminStats()" style="margin-top: 10px; padding: 5px 10px; background: #ffc107; border: none; border-radius: 5px; cursor: pointer;">
+                    Retry
+                </button>
+            </div>
+        `;
+    }
+
+    // Add active operations section
+    if (allOperations.success && allOperations.operations && Object.keys(allOperations.operations).length > 0) {
+        statsHTML += `
+            <div style="margin-top: 20px;">
+                <h5>🚀 Currently Active Operations</h5>
+                <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+                    ${Object.entries(allOperations.operations).map(([id, op]) => `
+                        <div style="margin: 5px 0; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 3px; border-left: 3px solid #00A389; font-size: 12px;">
+                            <strong>${op.username || 'Unknown'}</strong> | 
+                            ${op.config?.token_address ? op.config.token_address.slice(0, 8) + '...' : 'No token'} | 
+                            <span class="status-${op.status || 'unknown'}">${(op.status || 'UNKNOWN').toUpperCase()}</span> |
+                            Progress: ${op.progress?.cycles_completed || 0}/${op.progress?.total_cycles || 0}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    statsContainer.innerHTML = statsHTML;
+}
 
     async loadUsers() {
         try {
@@ -1225,7 +1158,6 @@ class ParallelMicroBuyBotApp {
                 this.closeChangePasswordModal();
                 if (oldPassword === this.userPassword) {
                     this.userPassword = newPassword;
-                    localStorage.setItem('userPassword', this.userPassword);
                 }
             } else {
                 alert('Failed to change password: ' + response.error);
@@ -1268,12 +1200,10 @@ class ParallelMicroBuyBotApp {
             },
         };
 
-        // Always add session ID if available
         if (this.sessionId) {
             options.headers['X-Session-ID'] = this.sessionId;
         }
 
-        // Add password header if provided (for wallet operations)
         if (password) {
             options.headers['Password'] = password;
         }
@@ -1282,28 +1212,17 @@ class ParallelMicroBuyBotApp {
             options.body = JSON.stringify(data);
         }
 
-        try {
-            const response = await fetch(endpoint, options);
+        const response = await fetch(endpoint, options);
 
-            // Handle 401 Unauthorized
-            if (response.status === 401) {
-                console.warn('API call returned 401:', endpoint);
-                this.isSessionValid = false;
-                throw new Error('Session expired');
-            }
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-            
-        } catch (error) {
-            if (error.message === 'Session expired') {
-                this.handleSessionExpired();
-            }
-            throw error;
+        if (response.status === 401) {
+            throw new Error('Session expired');
         }
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
     }
 }
 
